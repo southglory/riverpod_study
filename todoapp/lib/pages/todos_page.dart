@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'widgets/new_todo.dart';
 import 'widgets/todo_header.dart';
 
 class TodosPage extends StatelessWidget {
@@ -14,6 +15,7 @@ class TodosPage extends StatelessWidget {
           child: Column(
             children: [
               TodoHeader(),
+              NewTodo(),
             ],
           ),
         ),
