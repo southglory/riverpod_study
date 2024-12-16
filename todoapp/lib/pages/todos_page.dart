@@ -4,6 +4,7 @@ import 'widgets/filter_todo.dart';
 import 'widgets/new_todo.dart';
 
 import 'widgets/search_todo.dart';
+import 'widgets/show_todos.dart';
 import 'widgets/todo_header.dart';
 
 class TodosPage extends StatelessWidget {
@@ -23,6 +24,8 @@ class TodosPage extends StatelessWidget {
               SearchTodo(),
               SizedBox(height: 10),
               FilterTodo(),
+              SizedBox(height: 10),
+              Expanded(child: ShowTodos()),
             ],
           ),
         ),
