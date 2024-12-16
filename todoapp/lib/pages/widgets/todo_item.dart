@@ -2,49 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/todo_model.dart';
-import '../providers/todo_item/todo_item_provider.dart';
 import '../providers/todo_list/todo_list_provider.dart';
 
-class TodoItem extends ConsumerWidget {
-  const TodoItem({super.key});
+class TodoItem extends StatelessWidget {
+  final Todo todo;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+
+  const TodoItem({
+    super.key,
+    required this.todo,
+    required this.onToggle,
+    required this.onDelete,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final todo = ref.watch(todoItemProvider);
-    print('building TodoItem');
-
+  Widget build(BuildContext context) {
     return ListTile(
       onTap: () {
         showDialog(
           context: context,
-          builder: (context) {
-            return ConfirmEditDialog(todo: todo);
-          },
+          builder: (_) => ConfirmEditDialog(todo: todo),
         );
       },
       leading: Checkbox(
         value: todo.completed,
-        onChanged: (bool? checked) {
-          ref.read(todoListProvider.notifier).toggleTodo(todo.id);
-        },
+        onChanged: (_) => onToggle(),
       ),
       title: Text(todo.desc),
       trailing: IconButton(
+        icon: const Icon(Icons.delete),
         onPressed: () async {
-          final removeOrNot = await showDialog(
+          // 삭제 확인 다이얼로그
+          final removeOrNot = await showDialog<bool>(
             context: context,
-            barrierDismissible: false,
+            barrierDismissible: false, // 바깥 클릭으로 닫히지 않게 설정
             builder: (context) {
               return AlertDialog(
                 title: const Text('Are you sure?'),
                 content: const Text('Do you really want to delete?'),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
+                    onPressed: () => Navigator.of(context).pop(false), // 취소 선택 시 false 반환
                     child: const Text('No'),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
+                    onPressed: () => Navigator.of(context).pop(true), // 확인 선택 시 true 반환
                     child: const Text('Yes'),
                   ),
                 ],
@@ -52,11 +55,11 @@ class TodoItem extends ConsumerWidget {
             },
           );
 
-          if (removeOrNot) {
-            ref.read(todoListProvider.notifier).removeTodo(todo.id);
+          // 사용자가 삭제를 확인했을 때만 삭제 처리
+          if (removeOrNot == true) {
+            onDelete();
           }
         },
-        icon: const Icon(Icons.delete),
       ),
     );
   }
@@ -67,8 +70,7 @@ class ConfirmEditDialog extends ConsumerStatefulWidget {
   const ConfirmEditDialog({super.key, required this.todo});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() =>
-      _ConfirmEditDialogState();
+  ConsumerState<ConsumerStatefulWidget> createState() => _ConfirmEditDialogState();
 }
 
 class _ConfirmEditDialogState extends ConsumerState<ConfirmEditDialog> {
