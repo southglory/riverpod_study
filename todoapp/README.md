@@ -194,3 +194,155 @@
 3. UI에서 상태를 조작하지 않고 읽기 전용으로 사용하도록 리팩토링하는 것이 필요합니다.  
 
 이렇게 하면 **유지보수성**과 **확장성**이 크게 개선될 것입니다.
+
+---
+### 그런데 provider가 이렇게 많은게 좋아?
+
+---
+
+Provider가 많은 것은 프로젝트의 구조와 요구사항에 따라 **장단점**이 있습니다. 아래에 **Provider가 많을 때의 문제점**과 이를 **개선하는 방법**을 설명하겠습니다.
+
+---
+
+### **Provider가 많은 경우의 문제점**
+
+1. **코드 복잡성 증가**
+   - Provider가 많아질수록 코드의 복잡도가 높아지고, 관리하기 어려워질 수 있습니다.
+   - 서로 연관된 상태가 분리된 Provider로 관리되면, 상태 간의 의존성을 추적하기가 까다로워집니다.
+
+2. **상태 관리의 분산**
+   - 상태가 여러 Provider에 분산되면, 상태 간의 관계를 이해하거나 디버깅하기 어렵습니다.
+   - 예를 들어, `todoFilterProvider`, `todoSearchProvider`, `todoListProvider`가 서로 관련된 상태를 관리하지만, 각각 개별적으로 관리되어 복잡도가 증가합니다.
+
+3. **테스트 및 유지보수 어려움**
+   - 각각의 Provider가 독립적으로 테스트 가능해야 하지만, 서로 의존하는 Provider가 많으면 테스트가 복잡해질 수 있습니다.
+   - 새로운 기능을 추가할 때 관련된 여러 Provider를 수정해야 할 수도 있습니다.
+
+4. **성능 문제**
+   - Provider가 많아질수록, 불필요하게 많은 위젯이 재빌드될 가능성이 커집니다.
+
+---
+
+### **Provider 분리의 장점**
+- **단일 책임 원칙(Single Responsibility Principle)**:  
+  - 각 Provider가 하나의 상태만 관리하므로 역할이 명확합니다.
+- **재사용성 증가**:  
+  - 특정 상태가 여러 화면에서 필요할 때 해당 Provider를 쉽게 재사용할 수 있습니다.
+- **의존성 주입**:  
+  - 필요한 상태를 정확히 주입하여, UI 위젯이 의존하는 데이터를 명확히 설정할 수 있습니다.
+
+---
+
+### **Provider를 줄이는 방법**
+
+1. **StateNotifier로 복합 상태 관리**
+   - 여러 개의 Provider 대신 하나의 `StateNotifier`나 `Notifier`를 사용해 **복합 상태**를 관리합니다.
+   - 예: `TodoListState`라는 하나의 상태를 만들어, 필터링, 검색어, 할 일 목록을 모두 포함.
+
+   **예시 코드**:
+   ```dart
+   import 'package:riverpod/riverpod.dart';
+   import '../models/todo_model.dart';
+
+   class TodoListState {
+     final List<Todo> todos;
+     final Filter filter;
+     final String searchTerm;
+
+     TodoListState({
+       required this.todos,
+       required this.filter,
+       required this.searchTerm,
+     });
+
+     TodoListState copyWith({
+       List<Todo>? todos,
+       Filter? filter,
+       String? searchTerm,
+     }) {
+       return TodoListState(
+         todos: todos ?? this.todos,
+         filter: filter ?? this.filter,
+         searchTerm: searchTerm ?? this.searchTerm,
+       );
+     }
+   }
+
+   class TodoListNotifier extends StateNotifier<TodoListState> {
+     TodoListNotifier() : super(TodoListState(todos: [], filter: Filter.all, searchTerm: ''));
+
+     void addTodo(String desc) {
+       state = state.copyWith(todos: [...state.todos, Todo.add(desc: desc)]);
+     }
+
+     void toggleTodo(String id) {
+       state = state.copyWith(
+         todos: state.todos.map((todo) {
+           if (todo.id == id) {
+             return todo.copyWith(completed: !todo.completed);
+           }
+           return todo;
+         }).toList(),
+       );
+     }
+
+     void setFilter(Filter newFilter) {
+       state = state.copyWith(filter: newFilter);
+     }
+
+     void setSearchTerm(String searchTerm) {
+       state = state.copyWith(searchTerm: searchTerm);
+     }
+
+     List<Todo> get filteredTodos {
+       var filtered = state.todos;
+       if (state.filter == Filter.active) {
+         filtered = filtered.where((todo) => !todo.completed).toList();
+       } else if (state.filter == Filter.completed) {
+         filtered = filtered.where((todo) => todo.completed).toList();
+       }
+       if (state.searchTerm.isNotEmpty) {
+         filtered = filtered.where((todo) => todo.desc.toLowerCase().contains(state.searchTerm.toLowerCase())).toList();
+       }
+       return filtered;
+     }
+   }
+
+   final todoListProvider = StateNotifierProvider<TodoListNotifier, TodoListState>((ref) {
+     return TodoListNotifier();
+   });
+   ```
+
+2. **별도의 ViewModel 또는 Service 도입**
+   - **ViewModel**: UI 로직을 분리하여 Provider에서 직접 상태를 관리하지 않도록 리팩토링.
+   - **Service**: 데이터 로직을 Service 계층으로 옮겨 Provider는 Service의 데이터를 주입만 담당.
+
+3. **의존성 연결**
+   - 여러 Provider가 서로 독립적으로 동작하지 않고 서로 의존성을 갖는 경우, 필요한 상태를 Provider 내부에서 처리하도록 변경.
+   - 예: `filteredTodosProvider`를 `todoListProvider`의 상태를 구독하여 내부에서 필터링과 검색을 처리.
+
+---
+
+### **Provider를 줄이는 설계 예시**
+
+- 기존 설계:
+  - `todoListProvider`: 할 일 목록
+  - `todoFilterProvider`: 필터
+  - `todoSearchProvider`: 검색어
+  - `filteredTodosProvider`: 필터링된 목록
+
+- 개선 설계:
+  - `todoListProvider`: **하나의 Provider로 모든 상태를 관리**
+    - 할 일 목록, 필터, 검색어를 포함한 상태.
+    - 필터링과 검색은 상태 내부에서 처리.
+  - UI 위젯은 이 Provider를 구독하여 필요한 상태를 가져오고 사용.
+
+---
+
+### **결론**
+
+Provider의 개수는 적절한 수준을 유지해야 하며, **단순성과 가독성, 유지보수성**이 중요합니다. 현재처럼 여러 Provider가 있는 경우:  
+1. Provider를 통합 관리하는 구조(StateNotifier 사용).  
+2. UI와 데이터 로직을 분리하여 Provider의 역할을 명확히.  
+
+이렇게 개선하면 상태 관리가 단순화되고, 코드베이스의 유지보수성이 향상될 것입니다. 😊
