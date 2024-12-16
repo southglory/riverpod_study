@@ -86,6 +86,7 @@
 
 
 ---
+### ✨ **추가 개선 방향**  
 ### 혹시, 데이터 중심 설계 관점에서 볼 때, 데이터가 과도하게 ui의 상태와 엮여있거나 하지는 않은가?
 
 ---
@@ -196,6 +197,7 @@
 이렇게 하면 **유지보수성**과 **확장성**이 크게 개선될 것입니다.
 
 ---
+### ✨ **추가 개선 방향**  
 ### 그런데 provider가 이렇게 많은게 좋아?
 
 ---
@@ -346,3 +348,233 @@ Provider의 개수는 적절한 수준을 유지해야 하며, **단순성과 �
 2. UI와 데이터 로직을 분리하여 Provider의 역할을 명확히.  
 
 이렇게 개선하면 상태 관리가 단순화되고, 코드베이스의 유지보수성이 향상될 것입니다. 😊
+
+
+---
+### ✨ **추가 개선 방향**  
+### 그런데 provider는 상태관리를 목적으로 하는 클래스이므로, ui와 무관하게 하려면 provider 바깥에서 로직이 흘러가야 하는거 아니야?
+
+---
+맞습니다. **Provider는 상태 관리를 목적으로 하는 클래스**이기 때문에, **UI와 무관하게 작동하도록 설계**하는 것이 바람직합니다.  
+Provider 내부에서 **UI 로직**이 아닌 **데이터 관리**만 책임지고, UI와는 분리된 역할을 가져야 합니다. 이를 위해 다음과 같은 원칙과 구조를 적용할 수 있습니다.
+
+---
+
+## **Provider와 UI를 분리하는 올바른 설계**
+
+### **1. Provider는 데이터와 상태만 관리**
+- **Provider는 데이터의 상태를 관리하고, 변경 작업을 처리**해야 합니다.  
+- UI에서 Provider의 상태를 읽거나 변경 요청을 할 수는 있지만, **Provider가 UI에 대해 알 필요는 없습니다.**
+
+---
+
+### **2. UI 로직은 Provider 바깥에서 처리**
+UI와 관련된 로직(예: 사용자 입력 검증, 다이얼로그 표시, 애니메이션 등)은 Provider 바깥에서 처리되어야 합니다. Provider는 상태 변경 요청을 받아들이는 "데이터 관리 계층" 역할만 합니다.
+
+---
+
+### **3. 데이터 흐름 분리**
+- UI는 Provider에게 상태 변경 요청만 보냅니다.
+- Provider는 요청을 처리하고, 상태를 업데이트합니다.
+- UI는 Provider에서 변경된 상태를 구독하고, 필요할 경우 이를 렌더링합니다.
+
+---
+
+## **구조적인 설계 예시**
+
+### **1. TodoListProvider**
+Provider는 상태 관리와 로직만 처리하며 UI와 독립적입니다.
+
+**lib/providers/todo_list_provider.dart**
+```dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../models/todo_model.dart';
+
+part 'todo_list_provider.g.dart';
+
+@riverpod
+class TodoListNotifier extends _$TodoListNotifier {
+  @override
+  List<Todo> build() {
+    return [
+      const Todo(id: '1', desc: 'Clean the room'),
+      const Todo(id: '2', desc: 'Do homework'),
+    ];
+  }
+
+  void addTodo(String desc) {
+    state = [...state, Todo.add(desc: desc)];
+  }
+
+  void toggleTodo(String id) {
+    state = state.map((todo) {
+      if (todo.id == id) {
+        return todo.copyWith(completed: !todo.completed);
+      }
+      return todo;
+    }).toList();
+  }
+
+  void removeTodo(String id) {
+    state = state.where((todo) => todo.id != id).toList();
+  }
+}
+```
+
+---
+
+### **2. UI에서 Provider 호출**
+UI는 Provider의 상태를 읽거나 변경 요청을 보낼 뿐, Provider 내부 로직을 알지 못합니다.
+
+**lib/widgets/todo_item.dart**
+```dart
+import 'package:flutter/material.dart';
+import '../../../models/todo_model.dart';
+
+class TodoItem extends StatelessWidget {
+  final Todo todo;
+  final VoidCallback onToggle;
+  final VoidCallback onDelete;
+
+  const TodoItem({
+    super.key,
+    required this.todo,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Checkbox(
+        value: todo.completed,
+        onChanged: (_) => onToggle(),
+      ),
+      title: Text(todo.desc),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete),
+        onPressed: onDelete,
+      ),
+    );
+  }
+}
+```
+
+---
+
+### **3. ShowTodos에서 상태 관리**
+UI에서 상태를 읽고, 필요한 작업을 Provider에 요청합니다.
+
+**lib/widgets/show_todos.dart**
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/todo_list_provider.dart';
+import 'todo_item.dart';
+
+class ShowTodos extends ConsumerWidget {
+  const ShowTodos({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final todos = ref.watch(todoListNotifierProvider);
+
+    return ListView.builder(
+      itemCount: todos.length,
+      itemBuilder: (context, index) {
+        final todo = todos[index];
+        return TodoItem(
+          todo: todo,
+          onToggle: () => ref.read(todoListNotifierProvider.notifier).toggleTodo(todo.id),
+          onDelete: () => ref.read(todoListNotifierProvider.notifier).removeTodo(todo.id),
+        );
+      },
+    );
+  }
+}
+```
+
+---
+
+### **4. 사용자 입력과 Provider 연동**
+사용자 입력은 UI에서 처리하며, 검증 후 Provider에 전달합니다.
+
+**lib/widgets/add_todo_dialog.dart**
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/todo_list_provider.dart';
+
+class AddTodoDialog extends ConsumerStatefulWidget {
+  const AddTodoDialog({super.key});
+
+  @override
+  ConsumerState<AddTodoDialog> createState() => _AddTodoDialogState();
+}
+
+class _AddTodoDialogState extends ConsumerState<AddTodoDialog> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Todo'),
+      content: TextField(
+        controller: _controller,
+        decoration: const InputDecoration(hintText: 'Enter your todo'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('CANCEL'),
+        ),
+        TextButton(
+          onPressed: () {
+            final desc = _controller.text.trim();
+            if (desc.isNotEmpty) {
+              ref.read(todoListNotifierProvider.notifier).addTodo(desc);
+              Navigator.pop(context);
+            }
+          },
+          child: const Text('ADD'),
+        ),
+      ],
+    );
+  }
+}
+```
+
+---
+
+## **Provider와 UI 분리의 효과**
+1. **역할 분리**:  
+   - Provider는 상태 관리와 로직만 처리하고, UI는 Provider의 상태를 읽고 렌더링하는 역할만 합니다.
+   
+2. **테스트 가능성 증가**:  
+   - Provider가 UI와 독립적이므로, 상태 관리 로직을 쉽게 단위 테스트할 수 있습니다.
+
+3. **유지보수성 향상**:  
+   - UI와 상태 관리 로직이 분리되어 한쪽을 수정해도 다른 쪽에 영향을 미치지 않습니다.
+
+---
+
+## **결론**
+Provider는 UI와 독립적으로 상태를 관리해야 하며, UI는 Provider에 상태 변경 요청만 하고, 상태를 구독하는 역할만 해야 합니다.  
+이를 위해:
+- **Provider는 데이터와 로직만 관리**.  
+- **UI는 Provider의 상태를 읽거나 요청**.  
+- **사용자 입력 및 UI 로직은 UI 계층에서 처리**.  
+
+이렇게 구조를 개선하면 **확장성, 테스트 가능성, 유지보수성**이 모두 향상됩니다! 😊

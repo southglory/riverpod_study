@@ -5,7 +5,7 @@ import '../../../models/todo_model.dart';
 part 'todo_list_provider.g.dart';
 
 @riverpod
-class TodoList extends _$TodoList {
+class TodoListNotifier extends _$TodoListNotifier {
   @override
   List<Todo> build() {
     return [

@@ -10,7 +10,7 @@ part 'todo_view_model.g.dart';
 class TodoViewModel extends _$TodoViewModel {
   @override
   List<Todo> build() {
-    final todos = ref.watch(todoListProvider);
+    final todos = ref.watch(todoListNotifierProvider);
     final filter = ref.watch(todoFilterProvider);
     final search = ref.watch(todoSearchProvider);
 

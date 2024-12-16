@@ -18,8 +18,8 @@ class ShowTodos extends ConsumerWidget {
         final todo = filteredTodos[index];
         return TodoItem(
           todo: todo,
-          onToggle: () => ref.read(todoListProvider.notifier).toggleTodo(todo.id),
-          onDelete: () => ref.read(todoListProvider.notifier).removeTodo(todo.id),
+          onToggle: () => ref.read(todoListNotifierProvider.notifier).toggleTodo(todo.id),
+          onDelete: () => ref.read(todoListNotifierProvider.notifier).removeTodo(todo.id),
         );
       },
     );

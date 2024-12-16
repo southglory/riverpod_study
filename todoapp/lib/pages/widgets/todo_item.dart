@@ -111,7 +111,7 @@ class _ConfirmEditDialogState extends ConsumerState<ConfirmEditDialog> {
             if (error) {
               setState(() {});
             } else {
-              ref.read(todoListProvider.notifier).editTodo(
+              ref.read(todoListNotifierProvider.notifier).editTodo(
                     widget.todo.id,
                     textController.text,
                   );

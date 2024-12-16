@@ -6,7 +6,7 @@ part of 'active_todo_count_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$activeTodoCountHash() => r'aebe089bd3b4aea3f3242732e340c42c1e338ed0';
+String _$activeTodoCountHash() => r'48eb42376c71b42df7968867f69973ab73db01a2';
 
 /// See also [activeTodoCount].
 @ProviderFor(activeTodoCount)

@@ -11,7 +11,7 @@ class TodoHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeTodoCount = ref.watch(activeTodoCountProvider);
-    final todos = ref.watch(todoListProvider);
+    final todos = ref.watch(todoListNotifierProvider);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
