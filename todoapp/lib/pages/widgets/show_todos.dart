@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/filtered_todos/filtered_todos_provider.dart';
+import 'todo_item.dart';
 
 class ShowTodos extends ConsumerWidget {
   const ShowTodos({super.key});
@@ -17,10 +18,7 @@ class ShowTodos extends ConsumerWidget {
       },
       itemBuilder: (BuildContext context, int index) {
         final todo = filteredTodos[index];
-        return Text(
-          todo.desc,
-          style: const TextStyle(fontSize: 20),
-        );
+        return TodoItem(todo: todo);
       },
     );
   }
