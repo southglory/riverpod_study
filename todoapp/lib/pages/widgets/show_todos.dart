@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/filtered_todos/filtered_todos_provider.dart';
+import '../providers/todo_item/todo_item_provider.dart';
 import 'todo_item.dart';
 
 class ShowTodos extends ConsumerWidget {
@@ -18,7 +19,12 @@ class ShowTodos extends ConsumerWidget {
       },
       itemBuilder: (BuildContext context, int index) {
         final todo = filteredTodos[index];
-        return TodoItem(todo: todo);
+        return ProviderScope(
+          overrides: [
+            todoItemProvider.overrideWithValue(todo),
+          ],
+          child: const TodoItem(),
+        );
       },
     );
   }
