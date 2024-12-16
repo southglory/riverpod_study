@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/todo_model.dart';
+import '../../domain/models/todo_model.dart';
 import '../providers/todo_list/todo_list_provider.dart';
 
 class TodoItem extends StatelessWidget {

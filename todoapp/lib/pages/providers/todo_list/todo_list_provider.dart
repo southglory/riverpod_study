@@ -1,11 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../models/todo_model.dart';
+import '../../../domain/models/todo_model.dart';
+import '../../../domain/usecases/todo_usecase.dart';
 
 part 'todo_list_provider.g.dart';
 
 @riverpod
 class TodoListNotifier extends _$TodoListNotifier {
+  late final TodoUseCase _todoUseCase = TodoUseCase();
+
   @override
   List<Todo> build() {
     return [
@@ -16,28 +19,18 @@ class TodoListNotifier extends _$TodoListNotifier {
   }
 
   void addTodo(String desc) {
-    state = [...state, Todo.add(desc: desc)];
-    print(state);
+    state = _todoUseCase.addTodo(state, desc);
   }
 
   void editTodo(String id, String desc) {
-    state = [
-      for (final todo in state)
-        if (todo.id == id) todo.copyWith(desc: desc) else todo
-    ];
+    state = _todoUseCase.editTodo(state, id, desc);
   }
 
   void toggleTodo(String id) {
-    state = [
-      for (final todo in state)
-        if (todo.id == id) todo.copyWith(completed: !todo.completed) else todo
-    ];
+    state = _todoUseCase.toggleTodo(state, id);
   }
 
   void removeTodo(String id) {
-    state = [
-      for (final todo in state)
-        if (todo.id != id) todo
-    ];
+    state = _todoUseCase.removeTodo(state, id);
   }
 }
