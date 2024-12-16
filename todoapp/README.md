@@ -13,7 +13,7 @@
    - 여러 상태(할 일 목록, 필터, 검색어, 테마 등)를 각각 개별 Provider로 관리하고 있음.  
    - 상태 간 결합이나 복합 로직이 추가될 경우 복잡도가 증가할 수 있습니다.  
 - **개선 방향**:  
-   - **`StateNotifier`**나 **`Notifier`**를 사용하여 복합 상태(예: `TodoState`)를 한곳에 통합 관리하는 방법을 고려.  
+   - **`StateNotifier`** 나 **`Notifier`** 를 사용하여 복합 상태(예: `TodoState`)를 한곳에 통합 관리하는 방법을 고려.  
    - 예를 들어, 할 일 목록과 필터링, 검색 기능을 하나의 상태 클래스에 포함하여 리팩토링할 수 있습니다.
 
 ---
@@ -83,3 +83,114 @@
 ---
 
 **현재 구현된 기능은 매우 구조적이고 깔끔하지만, 사용자 경험과 코드 재사용성, 테스트 측면에서 약간의 개선이 필요합니다.**
+
+
+---
+### 혹시, 데이터 중심 설계 관점에서 볼 때, 데이터가 과도하게 ui의 상태와 엮여있거나 하지는 않은가?
+
+---
+
+데이터 중심 설계 관점에서 지금까지의 코드와 커밋을 살펴보면 **데이터와 UI 상태가 과도하게 엮여 있는 부분**이 일부 발견될 수 있습니다. 이는 유지보수성과 확장성을 저해할 수 있는 요소입니다.
+
+---
+
+### **데이터와 UI 상태의 결합 현황**  
+1. **데이터 모델과 UI 직접 사용**  
+   - `TodoItem`과 같은 위젯에서 **Todo 데이터 모델**을 직접 사용하고 있습니다.  
+   - 예시:  
+     ```dart
+     return ListTile(
+       title: Text(todo.desc),
+       ...
+     );
+     ```  
+   - 이렇게 UI에서 모델을 직접 사용하면 UI가 데이터의 구조에 강하게 의존하게 됩니다.  
+
+2. **데이터 상태와 UI 로직 결합**  
+   - `todoListProvider`, `todoFilterProvider`, `todoSearchProvider` 등 **상태 관리**가 Provider를 통해 잘 나눠져 있지만,  
+     **UI 위젯 내부에서 이 상태를 직접 구독하고 조작**합니다.  
+   - 예시:  
+     ```dart
+     final todos = ref.watch(todoListProvider);
+     final filter = ref.watch(todoFilterProvider);
+     final search = ref.watch(todoSearchProvider);
+     ```  
+   - 이렇게 UI와 상태 관리가 밀접하게 엮이면 **재사용성**이 떨어지고, 상태 변화에 따라 UI 로직이 불필요하게 복잡해질 수 있습니다.
+
+3. **ProviderScope의 세부 주입**  
+   - `ShowTodos`에서 `ProviderScope`를 통해 `todoItemProvider`를 세부적으로 override하고 있습니다.  
+   - 이는 데이터 상태를 UI 위젯과 밀접하게 엮어놓는 대표적인 예시입니다.  
+
+---
+
+### **문제가 되는 이유**  
+- **재사용성 저하**: UI가 데이터 모델에 의존하면 모델이 변경될 때 UI까지 수정해야 합니다.  
+- **유지보수 복잡성**: 데이터의 로직과 UI 로직이 분리되지 않아 수정 사항이 여러 파일에 퍼질 수 있습니다.  
+- **확장성 부족**: 데이터나 상태 관리 방식을 바꾸려면 UI 로직도 함께 리팩토링해야 합니다.  
+
+---
+
+### **개선 방향**  
+
+1. **ViewModel 또는 중간 계층 도입**  
+   - 데이터와 UI 상태를 분리하기 위해 **ViewModel**이나 중간 계층을 도입합니다.  
+   - 예시 구조:  
+     - **`TodoViewModel`**: 데이터를 가공하고 UI 상태를 제공.  
+     - **UI**는 ViewModel에서 제공하는 상태를 구독합니다.  
+
+   **예시**:
+   ```dart
+   class TodoViewModel {
+     final List<Todo> todos;
+     TodoViewModel({required this.todos});
+
+     List<Todo> get activeTodos => todos.where((todo) => !todo.completed).toList();
+   }
+   ```
+
+   UI 위젯은 ViewModel만 구독:
+   ```dart
+   final viewModel = TodoViewModel(todos: ref.watch(todoListProvider));
+   ```
+
+---
+
+2. **상태 가공은 Provider 단에서 처리**  
+   - 현재 `filteredTodosProvider`에서 필터링과 검색을 동시에 수행합니다.  
+   - 상태 가공 로직이 많아지면 Provider가 복잡해지므로 **별도의 상태 가공 Provider**로 분리하는 것이 좋습니다.  
+
+   **예시**:
+   ```dart
+   final activeTodosProvider = Provider((ref) {
+     final todos = ref.watch(todoListProvider);
+     return todos.where((todo) => !todo.completed).toList();
+   });
+   ```
+
+---
+
+3. **UI와 상태의 의존성 최소화**  
+   - UI는 오직 상태를 **읽기**만 하고, 상태 조작은 **ViewModel**이나 Provider 내부에서만 처리해야 합니다.  
+   - UI 코드에서 `ref.read`를 직접 호출하지 않고 콜백 함수나 ViewModel을 통해 상태를 변경합니다.
+
+   **개선된 UI 예시**:
+   ```dart
+   Consumer(builder: (context, ref, _) {
+     final todos = ref.watch(filteredTodosProvider);
+     return ListView.builder(
+       itemCount: todos.length,
+       itemBuilder: (context, index) => TodoItem(todo: todos[index]),
+     );
+   });
+   ```
+
+---
+
+### **결론**  
+현재 상태 관리와 UI는 잘 설계되었지만 **데이터와 UI 상태의 결합이 느슨하지 않은 부분**이 보입니다. 이를 개선하려면:  
+
+1. **ViewModel**을 도입해 UI와 상태 로직을 분리하고,  
+2. 상태 가공은 Provider 또는 별도 계층에서 처리하며,  
+3. UI에서 상태를 조작하지 않고 읽기 전용으로 사용하도록 리팩토링하는 것이 필요합니다.  
+
+이렇게 하면 **유지보수성**과 **확장성**이 크게 개선될 것입니다.
